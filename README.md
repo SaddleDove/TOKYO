@@ -4,7 +4,7 @@
 
 A novel in thirty-six chapters. Six people, four hours a night, behind dryer four in a laundromat in Shibuya. A club called TOKYO opens at 23:00 and clears at 03:00. It has ninety days left. Nobody in it knows that the voice coming out of the speakers belongs to the taxi driver parked outside.
 
-**Read it in the browser:** https://saddledove.github.io/tokyo/
+**Read it in the browser:** https://saddledove.github.io/TOKYO/
 
 ---
 
