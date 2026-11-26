@@ -1,0 +1,7 @@
+# process notes, drafts and the manuscript working folder — not published
+draft/
+novel/
+_stage/
+_probe*
+.DS_Store
+Thumbs.db
