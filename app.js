@@ -27,6 +27,7 @@
   let fast = false;
   let scrollTick = 0;
   let resume = null;
+  let token = 0;
 
   function wait(ms) {
     return new Promise(function (resolve) { setTimeout(resolve, ms); });
@@ -34,6 +35,13 @@
 
   function waitForAdvance() {
     return new Promise(function (resolve) { resume = resolve; });
+  }
+
+  function release() {
+    if (!resume) return;
+    const next = resume;
+    resume = null;
+    next();
   }
 
   function pace(ch, i, seed) {
@@ -54,26 +62,37 @@
     return fast ? Math.max(1, d * 0.06) : d;
   }
 
-  async function typeString(el, str, seed, clear) {
+  // guard is the token the passage started under. A chapter jump bumps the token,
+  // so the passage in flight stops instead of printing on into a cleared screen.
+  async function typeString(el, str, seed, clear, guard) {
     if (clear) el.textContent = "";
     const chars = Array.from(str);
     for (let i = 0; i < chars.length; i++) {
+      if (guard !== undefined && guard !== token) return false;
       el.textContent += chars[i];
       if (++scrollTick % 8 === 0) {
         window.scrollTo(0, document.body.scrollHeight);
       }
       await wait(pace(chars[i], i, seed));
     }
+    if (guard !== undefined && guard !== token) return false;
     window.scrollTo(0, document.body.scrollHeight);
+    return true;
+  }
+
+  function jump(delta) {
+    chapterIndex = Math.max(0, Math.min(chapters.length - 1, chapterIndex + delta));
+    segmentIndex = 0;
+    token += 1;
+    textEl.textContent = "";
+    release();
   }
 
   function advance(e) {
     const isAdvance = e.type === "click" || e.key === " " || e.key === "Enter";
     if (isAdvance && resume) {
-      const next = resume;
-      resume = null;
-      next();
       if (e.preventDefault) e.preventDefault();
+      release();
       return;
     }
     if (e.type !== "keydown") return;
@@ -81,14 +100,10 @@
       fast = !fast;
       e.preventDefault();
     } else if (e.key === "ArrowRight") {
-      chapterIndex = Math.min(chapters.length - 1, chapterIndex + 1);
-      segmentIndex = 0;
-      textEl.textContent = "";
+      jump(1);
       e.preventDefault();
     } else if (e.key === "ArrowLeft") {
-      chapterIndex = Math.max(0, chapterIndex - 1);
-      segmentIndex = 0;
-      textEl.textContent = "";
+      jump(-1);
       e.preventDefault();
     }
   }
@@ -102,13 +117,19 @@
     await waitForAdvance();
 
     while (chapterIndex < chapters.length) {
-      const segments = chapters[chapterIndex];
+      const chapterAt = chapterIndex;
+      const segments = chapters[chapterAt];
+      let jumped = false;
       while (segmentIndex < segments.length) {
-        await typeString(textEl, segments[segmentIndex], chapterIndex * 97 + segmentIndex, true);
-        if (chapterIndex === chapters.length - 1 && segmentIndex === segments.length - 1) return;
+        const myToken = token;
+        await typeString(textEl, segments[segmentIndex], chapterAt * 97 + segmentIndex, true, myToken);
+        if (myToken !== token) { jumped = true; break; }
+        if (chapterAt === chapters.length - 1 && segmentIndex === segments.length - 1) return;
         await waitForAdvance();
+        if (myToken !== token) { jumped = true; break; }
         segmentIndex += 1;
       }
+      if (jumped) continue;
       chapterIndex += 1;
       segmentIndex = 0;
     }
